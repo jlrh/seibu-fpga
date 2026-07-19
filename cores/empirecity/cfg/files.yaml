@@ -1,0 +1,35 @@
+empirecity:
+  - get:
+    - jtempirecity_game.v      # contrato jtframe (GAMETOP interno)
+    - empirecity_main.v        # Z80 principal + mapa + latches (fm/mcu/coin) + banco
+    - empirecity_video.v       # timing + 3 tilemaps (tx RAM, bg/fg ROM) + sprites + mezcla CLUT
+    - empirecity_sound.v       # Z80 sonido + 2x jt03 (YM2203) + soundlatch
+    - empirecity_mcu.v         # wrapper jtframe_6805mcu (68705): coins + ADPCM + NMI
+    - empirecity_coinmech.v    # conformador de pulso de moneda (el botón NO es un mecanismo: ver dentro)
+    - empirecity_adpcm.v       # MSM5205 (jt5205) alimentado por la MCU
+    - empirecity_colmix.v      # paleta xBRG_444 -> RGB, mezcla de capas por prioridad+CLUT
+jtframe:
+  - get:
+      - jtframe_ff.v
+  - from: clocking
+    get:
+      - jtframe_cen48.v
+  - from: ram
+    get:
+      - jtframe_ram.v
+      - jtframe_dual_ram.v
+      - jtframe_prom.v
+      - jtframe_obj_buffer.v
+  - from: video
+    get:
+      - jtframe_vtimer.v
+      - jtframe_blank.v
+  - from: cpu
+    get:
+      - jtframe_z80.yaml
+      - jtframe_6805mcu.yaml
+jt12:
+  - get:
+    - jt12_rst.v
+    - jt03.yaml
+jt5205:

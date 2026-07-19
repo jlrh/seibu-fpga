@@ -1,0 +1,91 @@
+# Genera el .mra desde el XML de MAME (= el ORÁCULO) en vez de escribirlo a mano.
+#
+# ESTADO (2026-07-17): el .mra generado es **BYTE A BYTE IGUAL** al de mano que funciona en placa,
+# **SALVO LOS BYTES DE RELLENO** (jtframe rellena con FF; el nuestro con 00). Medido con mra2rom:
+#     mismo tamaño (0xccf10); 4 tramos distintos, TODOS relleno:
+#     0x08010-0x10010, 0x18010-0x30010, 0x38010-0x40010, 0x48010-0x4A010
+# ⚠ NO se ha adoptado todavía: el `.mra` desplegable sigue siendo `cores/empirecity/empirecity.mra`
+#   (ese está PROBADO EN PLACA). Para adoptarlo: desplegar el generado y verificar en HW.
+#
+# ¿ES SEGURO EL RELLENO FF? (medido, no supuesto)
+#   · 0x08000-0x0FFFF: el RTL NUNCA lo direcciona (0x0000-0x7fff -> 0x00000+A; el "opcode->0x8000+A"
+#     del comentario de empirecity_main.v era FALSO, del esquema abandonado). Irrelevante.
+#   · 0x18000-0x1FFFF: ahí caen los BANCOS 2 y 3 (0x10000+bank*0x4000). cpu.2u solo llega a 0x17FFF.
+#     ⭐ En MAME esa zona es CERO (`ROM_REGION(2*0x18000,"maincpu",0)`, flags=0 => zero-fill) => FF
+#     DIVERGE del oráculo. PERO: medido en MAME con partida real de 75s (y attract), **solo se usa el
+#     banco 0**; y el propio stfight.cpp dice "It's entirely possible that this bank is never switched
+#     out". => inofensivo en la práctica, pero es una divergencia REAL con MAME. Anotado.
+#   · 0x38000-0x3FFFF (tras ec_04) y 0x48000-0x49FFF (hueco del antiguo tx_gfx): no se direccionan.
+#   `fill_upto()` (corerom.go:437) tiene el " FF" **HARDCODEADO**: no hay opción para rellenar con 00.
+#
+# ⭐ POR QUÉ EXISTE ESTE FICHERO (GAPS G-10): sin él, `jtframe mra empirecity` responde
+#   "Skipping empirecity missing def/toml" -- **falla en SILENCIO** -- y acabas escribiendo el XML a
+#   mano. Así se coló el bug de los DIP del 2026-07-17: `bits` es un RANGO "lsb,msb", NO una lista
+#   (`mra/dipsw.go:165`), y un `bits="0,1,2"` a mano dejaba el coinage en 2 bits (OSD con 4 de 8
+#   opciones). El <switches> que genera esto sale EXACTO y CONFIRMÓ el arreglo:
+#       <dip name="Coin A" bits="0,2" ids="5/1,1/5,3/1,1/2,4/1,1/3,2/1,1/1"/>  default="3f,4d"
+#
+# ⛔ §H18 (`mra2rom` + `cmp` contra el rom.bin de la sim) **NO ES APLICABLE A ESTE CORE**. El motivo NO es
+#   "la sim carga por bancos" (opwolf/cowboys tambien y su rom.bin SI es imagen completa) — el criterio
+#   correcto es **¿QUIEN FABRICA tu rom.bin?**: el nuestro lo **SINTETIZA** `tools/empirecity_jtsim_prep.py`,
+#   que solo escribe las PROMs (@`0xCA091-0xCCF0F`) y deja el resto a cero ⇒ **STUB** (99,1 % ceros, MEDIDO).
+#   Compararte contra él da "695.596 bytes distintos" y no significa NADA. La comparación válida es **.mra
+#   generado vs .mra de mano, ambos por el MISMO mra2rom** (manzanas con manzanas): `scripts/_empirecity_cmp_mra.sh`.
+#
+# XML: las máquinas de stfight.cpp NO están en `doc/mame.xml` (COMPARTIDO, y otro agente lo estaba
+#   regenerando entero) -> añadidas a **`doc/custom.xml`**, que `collect_xml_paths()` (mame2mra.go:270)
+#   carga automáticamente si existe. Punto de extensión de la propia herramienta: aditivo, sin pisar.
+#   Requiere `JTBIN` exportado.
+#
+[global]
+author=["jlrodriguez"]
+
+[parse]
+sourcefile=[ "stfight.cpp" ]
+# Solo el set objetivo: US, cifrado, con dump REAL del MCU (los demás sets llevan dumps "hack" de MAME).
+machines=[ "empcity" ]   # Seibu Kaihatsu ORIGINAL (no empcityu=Taito US). Cambiado 2026-07-17: el usuario
+                         # quiere la marca Seibu. vs empcityu solo cambian ec_01/ec_02/17.2n; mapa igual.
+                         # El color de balas es el DIP "Bullet Colour" (SW1:8), NO depende del set.
+
+[dipsw]
+delete=[{names=["Unused","Unknown"]}]
+
+[ROM]
+# Layout = el del .mra de mano (ya validado en sim y en placa). Los `start` son macros de macros.def.
+# Las regiones de MAME encajan 1:1 con nuestro mapa; `maincpu` ya trae el hueco del banco en sus
+# propios offsets (cpu.4u@0, cpu.2u@0x10000) -> NO usar no_offset aquí o se pierde.
+# ⚠ cpu.4u va CIFRADO tal cual: lo descifra el RTL (empirecity_main.v), la .mra no precomputa nada.
+regions = [
+    { name="maincpu" },                                       # BA0 0x00000: cpu.4u@0 + cpu.2u@0x10000
+    { name="audiocpu",            start="JTFRAME_BA1_START" },# BA1 0x30000
+    { name="adpcm",               start="ADPCM_START"       },#     0x40000
+    # BA2 0x48000: hay un hueco de 0x2000 (era tx_gfx; hoy vid.2p va como PROM) -> fg_map arranca en 0x4A000
+    { name="stfight_vid:fg_map",  start="FGMAP_START"       },#     0x4A000
+    { name="stfight_vid:bg_map",  start="BGMAP_START"       },#     0x5A000
+    { name="stfight_vid:fg_gfx",  start="FGGFX_START"       },#     0x6A000
+    { name="stfight_vid:bg_gfx",  start="BGGFX_START"       },#     0x8A000
+    { name="stfight_vid:spr_gfx", start="SPRGFX_START"      },#     0xAA000
+    # PROMs (BRAM) 0xCA000. ORDEN = cfg/mem.yaml (bram:). Los CLUT van CRUDOS: son 82s129 de 256x4
+    # (ROM_LOAD_NIB_HIGH/LOW) y el vídeo combina {hi[3:0],lo[3:0]} -- una .mra NO sabe hacer nibbles.
+    { name="mcu",                 start="JTFRAME_PROM_START"},#     0xCA000 (+0x000, 0x800)
+    { name="stfight_vid:tx_gfx"  },                           #     +0x800  vid.2p (0x2000)
+    { name="stfight_vid:tx_clut" },                           #     +0x2800 82s129.006
+    { name="stfight_vid:fg_clut",  sequence=[1,0] },                           #     +0x2900 82s129.002/003
+    { name="stfight_vid:bg_clut",  sequence=[1,0] },                           #     +0x2B00 82s129.004/005
+    { name="stfight_vid:spr_clut", sequence=[1,0] },                           #     +0x2D00 82s129.052/066
+    # ⭐ `sequence=[0,1]`: MAME declara los DOS ficheros de cada CLUT en el **offset 0** (son
+    #    ROM_LOAD_NIB_HIGH/NIB_LOW) -> la herramienta no puede saber cual va primero y los sacaba
+    #    INVERTIDOS (003,002 / 005,004 / 066,052): el video leeria el nibble alto donde va el bajo
+    #    = colores mal. `sequence` fuerza el orden del XML: 0 = el primero declarado = el NIB_HIGH.
+    # NO van en la .mra (MAME NO las usa para nada que implementemos):
+    { name="proms", skip=true },                              # 82s129.015 = PROM de TIMING
+    { name="user1", skip=true },                              # 82s123.a7
+]
+
+order = [
+    "maincpu", "audiocpu", "adpcm",
+    "stfight_vid:fg_map", "stfight_vid:bg_map",
+    "stfight_vid:fg_gfx", "stfight_vid:bg_gfx", "stfight_vid:spr_gfx",
+    "mcu", "stfight_vid:tx_gfx", "stfight_vid:tx_clut",
+    "stfight_vid:fg_clut", "stfight_vid:bg_clut", "stfight_vid:spr_clut",
+]

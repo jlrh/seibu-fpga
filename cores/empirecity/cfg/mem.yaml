@@ -1,0 +1,102 @@
+params:
+  - { name: ADPCM_OFFSET, value: "(`ADPCM_START-`JTFRAME_BA1_START)>>1" }
+  - { name: FGMAP_OFFSET, value: "(`FGMAP_START-`JTFRAME_BA2_START)>>1" }
+  - { name: BGMAP_OFFSET, value: "(`BGMAP_START-`JTFRAME_BA2_START)>>1" }
+  - { name: FGGFX_OFFSET, value: "(`FGGFX_START-`JTFRAME_BA2_START)>>1" }
+  - { name: BGGFX_OFFSET, value: "(`BGGFX_START-`JTFRAME_BA2_START)>>1" }
+  - { name: SPRGFX_OFFSET, value: "(`SPRGFX_START-`JTFRAME_BA2_START)>>1" }
+clocks:
+  clk48:
+    - freq: 12M
+      outputs:
+        - cen12
+        - cen6
+        - cen3      # Z80 main/sound + MCU 68705 (12/4 = 3 MHz)
+        - cen1p5    # YM2203 x2 (12/8 = 1.5 MHz)
+    - freq: 384k
+      outputs:
+        - cenp384   # MSM5205
+# Modelo de mezcla REDERIVADO de los add_route de stfight.cpp (:765-780), NO heredado de trojan:
+#   MAME: YM FM = 0.15, YM SSG = 0.10, MSM5205 (ADPCM) = 0.50 -> el ADPCM es el canal MAS FUERTE.
+#   jtframe: ganancia ~ 1/rsum, luego rsum ~ 1/gain. Ratios MAME => psg:fm:pcm = 5 : 3.33 : 1.
+#   Anclados para CONSERVAR el pico global de trojan (~2.06, evita clipping): pcm 2.2k, fm 7.5k, psg 12k.
+#   -> vs trojan: psg MUCHO mas flojo (4.9k->12k) y pcm mas fuerte (eff 4k->2.2k, ademas sin el `pre:0.3`
+#   de trojan que bajaba el ADPCM al 30%). Neta: los disparos/impactos suben, absoluto Y relativo, sin
+#   subir el pico. El RC del MSM (reconstruccion) se mantiene. ⚠ PENDIENTE: verificar por OIDO en placa
+#   (no hay golden de audio); si aun flojo, bajar pcm rsum 2.2k->1.8k; si satura, subir `rsum:` sup. a 3.3k.
+audio:
+  rsum: 2.4k
+  channels:
+    - { name: psg0, module: jt03_psg, rsum: 12k }
+    - { name: psg1, module: jt03_psg, rsum: 12k }
+    - { name: fm0,  module: jt03_fm,  rsum: 7.5k, rc: [{ r: rout, c: 1n }] }
+    - { name: fm1,  module: jt03_fm,  rsum: 7.5k, rc: [{ r: rout, c: 1n }] }
+    - { name: pcm,  module: jt5205,   rsum: 2.2k, rc: [{ r: 7k, c: 22n }, { r: 10k, c: 22n }] }
+sdram:
+  banks:
+    # BA0: Z80 principal (prog+banco). 0x30000 = 2*0x18000
+    - buses:
+        - { name: main, addr_width: 18, data_width: 8 }
+    # BA1: Z80 sonido + muestras ADPCM del MSM5205
+    - buses:
+        - { name: snd,   addr_width: 16, data_width: 8 }
+        - { name: adpcm, addr_width: 15, data_width: 8, offset: ADPCM_OFFSET }
+    # BA2: graficos (mapas fg/bg + gfx tx/fg/bg/spr). tx en BRAM (ver abajo); resto en SDRAM.
+    - buses:
+        - { name: fgmap, addr_width: 16, data_width: 8, offset: FGMAP_OFFSET }
+        - { name: bgmap, addr_width: 16, data_width: 8, offset: BGMAP_OFFSET }
+        - { name: fgrom, addr_width: 17, data_width: 32, offset: FGGFX_OFFSET }
+        - { name: bgrom, addr_width: 17, data_width: 32, offset: BGGFX_OFFSET }
+        - { name: objrom, addr_width: 17, data_width: 32, offset: SPRGFX_OFFSET }
+bram:
+  # ROM interna del MCU 68705 (0x800), en runtime desde la .mra (PROM). Patron bubl.
+  - name: mcu
+    addr_width: 11
+    data_width: 8
+    prom: true
+    simfile: {}
+  # gfx del texto (tx) 8KB: pequeno -> BRAM
+  - name: txrom
+    addr_width: 13
+    data_width: 8
+    prom: true
+    rom: { offset: "0" }
+  # ⭐ CLUTs: en el HW REAL son PROMs 82s129 de **256x4** (dato en el nibble BAJO). Ver ROM_START(empcityu):
+  #   tx_clut  = ROM_LOAD         (82s129.006)                  -> 1 PROM, byte entero
+  #   fg_clut  = ROM_LOAD_NIB_HIGH(82s129.002) + NIB_LOW(003)   -> DOS PROMs, 4 bits cada una
+  #   bg_clut  = NIB_HIGH(004) + NIB_LOW(005)
+  #   spr_clut = NIB_HIGH(052) + NIB_LOW(066)
+  # MAME las funde al cargar: dest[a] = {hi[a][3:0], lo[a][3:0]} (verificado byte-exacto vs sus volcados).
+  # 🔴 **Un `.mra` NO sabe combinar NIBBLES** (solo opera a nivel de BYTE) -> antes teníamos 4 CLUTs ya
+  # fundidas por MAME, algo que la PLACA NO PUEDE RECIBIR. Ahora van las 7 PROMs CRUDAS (= lo que hay en
+  # el zip) y **el vídeo combina los nibbles**, igual que el HW real (2 PROMs de 4 bits por bus).
+  # Mismo criterio que el descifrado del main: la SDRAM/PROM solo lleva lo que el .mra puede entregar.
+  # ⚠ El ORDEN de esta lista fija los offsets del download -> debe casar con empirecity_video.v.
+  - name: txclut          # +0x2800
+    addr_width: 8
+    data_width: 8
+    prom: true
+  - name: fgclut_hi       # +0x2900
+    addr_width: 8
+    data_width: 8
+    prom: true
+  - name: fgclut_lo       # +0x2A00
+    addr_width: 8
+    data_width: 8
+    prom: true
+  - name: bgclut_hi       # +0x2B00
+    addr_width: 8
+    data_width: 8
+    prom: true
+  - name: bgclut_lo       # +0x2C00
+    addr_width: 8
+    data_width: 8
+    prom: true
+  - name: sprclut_hi      # +0x2D00
+    addr_width: 8
+    data_width: 8
+    prom: true
+  - name: sprclut_lo      # +0x2E00
+    addr_width: 8
+    data_width: 8
+    prom: true

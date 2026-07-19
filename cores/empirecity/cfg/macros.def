@@ -1,0 +1,42 @@
+[*]
+# Empire City: 1931 / Street Fight (Seibu, 1986) — seibu/stfight.cpp
+# .rbf: empirecity.rbf | .mra: "Empire City: 1931 (Seibu, 1986)"
+# XTAL 12MHz: Z80 main/sound + MCU 68705 = 12/4 = 3MHz; YM2203 x2 = 12/8 = 1.5MHz; MSM5205 = 384kHz
+# ⚠ NOMENCLATURA — ver CONVENCION-NOMBRES.md del común (§1/§2/§3). Resumen de lo que aplica aquí:
+#   CORENAME **SIN prefijo `jt`** -> proyecto `empirecity.qsf` y `.rbf` `empirecity.rbf`. El `jt` es la
+#   marca PERSONAL de jotego; este core es NUESTRO (sobre infra JTFRAME GPL, crédito mantenido).
+#   GAMETOP **SÍ lleva `jt` a la fuerza**: memgen concatena "jt"+core al nombre del game_sdram
+#   (`mem.go:100`) e IGNORA un GAMETOP sin `jt` -> es estructura interna de JTFRAME, no visible.
+#   ⛔ SIN esta línea, jtframe resuelve GAMETOP=empirecity_game_sdram (por defecto, sin jt) y el
+#   files.qip referencia un fichero INEXISTENTE (`files.go:103` usa el macro GAMETOP para el .qip),
+#   mientras memgen escribe jtempirecity_game_sdram.v -> el build no encuentra el GAMETOP.
+CORENAME=EMPIRECITY
+GAMETOP=jtempirecity_game_sdram
+
+# ⭐ ORDEN DE BITS DEL JOYSTICK — arregla "izquierda y derecha van las dos a la derecha" (placa, 2026-07-16)
+# jtframe (default): bit3=UP bit2=DOWN bit1=LEFT bit0=RIGHT   (`jtframe_joysticks.v` u_joy_reorder)
+# stfight  (MAME)  : bit0=UP bit1=DOWN bit2=LEFT bit3=RIGHT   (INPUT_PORTS_START(stfight): 0x01=UP...0x08=RIGHT)
+# => están EXACTAMENTE INVERTIDOS. `JTFRAME_JOY_RLDU` hace el reverso completo de los 4 bits bajos
+#    (`reorder[3:0]={joy_in[0],joy_in[1],joy_in[2],joy_in[3]}`) = justo lo que MAME espera.
+# Se usa el macro de jtframe en vez de retorcer bits en el RTL: es su mecanismo para esto.
+JTFRAME_JOY_RLDU
+JTFRAME_BUTTONS=2
+JTFRAME_WIDTH=256
+JTFRAME_HEIGHT=224
+JTFRAME_COLORW=4
+JTFRAME_CLK48
+JTFRAME_HEADER=16
+JTFRAME_BA1_START=0x30000
+ADPCM_START=0x40000
+JTFRAME_BA2_START=0x48000
+FGMAP_START=0x4A000
+BGMAP_START=0x5A000
+FGGFX_START=0x6A000
+BGGFX_START=0x8A000
+SPRGFX_START=0xAA000
+JTFRAME_PROM_START=0xCA000
+
+[mister]
+JTFRAME_ARX=4
+JTFRAME_ARY=3
+JTFRAME_OSD_NOLOGO
