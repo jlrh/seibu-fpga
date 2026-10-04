@@ -10,7 +10,7 @@ loaded at **runtime** from the `.mra`, so the bitstream is distributable as-is. 
   modules) and its toolchain (`setprj.sh`, `jtcore`).
 - **Quartus** (the version your MiSTer board needs).
 - Your Empire City **ROMs** (not included), **including the 68705 firmware** `empcityu_68705.3j` — see
-  [`README.md`](README.md).
+  [`DETAILS.md`](DETAILS.md).
 
 ## Steps
 
@@ -60,7 +60,7 @@ para MiSTer.
   módulos) y su toolchain (`setprj.sh`, `jtcore`).
 - **Quartus** (la versión que pida tu placa MiSTer).
 - Tus **ROMs** de Empire City (no se incluyen), **incluido el firmware del 68705** `empcityu_68705.3j` —
-  ver [`README.md`](README.md).
+  ver [`DETAILS.md`](DETAILS.md).
 
 ## Pasos
 
