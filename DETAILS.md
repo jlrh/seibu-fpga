@@ -153,3 +153,16 @@ hacen falta estas piezas, que se distribuyen desde su propio origen:
 | jt12 — YM2203 (jt03) | [https://github.com/jotego/jt12](https://github.com/jotego/jt12) | `modules/jt12` |
 | jt5205 — MSM5205 (ADPCM) | [https://github.com/jotego/jt5205](https://github.com/jotego/jt5205) | `modules/jt5205` |
 <!-- /omf_release:dependencias:ffempirecity -->
+
+<!-- omf_release:dependencias:ffdeadang -->
+## Dependencias externas de `ffdeadang`
+
+Este repositorio contiene **solo el código de los cores**. Para compilar `ffdeadang`
+hacen falta estas piezas, que se distribuyen desde su propio origen:
+
+| Qué | De dónde | Dónde va |
+|---|---|---|
+| jtframe — framework de compilacion y modulos comunes (vtimer, SDRAM, descarga, CPU Z80) | [https://github.com/jotego/jtframe](https://github.com/jotego/jtframe) | `modules/jtframe` |
+| jt12 — YM2203 x2 (jt03) | [https://github.com/jotego/jt12](https://github.com/jotego/jt12) | `modules/jt12` |
+| jt5205 — MSM5205 x2 (ADPCM) | [https://github.com/jotego/jt5205](https://github.com/jotego/jt5205) | `modules/jt5205` |
+<!-- /omf_release:dependencias:ffdeadang -->

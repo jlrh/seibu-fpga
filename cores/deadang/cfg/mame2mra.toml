@@ -1,0 +1,35 @@
+[global]
+author=["jlrodriguez"]
+
+[parse]
+sourcefile=[ "deadang.cpp" ]
+machines=[ "deadang" ]
+rename = [
+    { setname="deadang", name="Dead Angle (FF, Seibu, 1988)" },
+]
+
+[dipsw]
+delete=[{names=["Unused","Unknown"]}]
+
+[ROM]
+regions = [
+
+    { name="maincpu",  width=16, no_offset=true },
+    { name="sub",      width=16, no_offset=true, start="JTFRAME_BA1_START" },
+
+    { name="audiocpu", start="SND_START" },
+    { name="adpcm1",   start="PCM0_START" },
+    { name="adpcm2",   start="PCM1_START" },
+    { name="tiles1",   start="JTFRAME_BA2_START" },
+    { name="sprites",  start="OBJ_START" },
+    { name="tiles2",   start="JTFRAME_BA3_START" },
+    { name="tiles3",   start="PF3_START" },
+
+    { name="chars",    start="JTFRAME_PROM_START" },
+
+    { name="bgmap1",   width=8, no_offset=true, sequence=[0,1] },
+    { name="bgmap2",   width=8, no_offset=true, sequence=[0,1] },
+]
+
+order = [ "maincpu", "sub", "audiocpu", "adpcm1", "adpcm2", "tiles1", "sprites",
+          "tiles2", "tiles3", "chars", "bgmap1", "bgmap2" ]

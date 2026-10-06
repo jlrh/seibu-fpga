@@ -1,0 +1,37 @@
+deadang:
+  - get:
+
+    - v30u_ss_pkg.sv
+    - v30u_ucrom.sv
+    - v30u_biu.sv
+    - v30u_eu.sv
+    - v30_core.sv
+    - jtdeadang_game.v
+    - deadang_main.v
+    - deadang_sub.v
+    - deadang_shared.v
+    - deadang_v30.sv
+    - deadang_video.v
+    - deadang_tilemap.v
+    - deadang_text.v
+    - deadang_obj.v
+    - deadang_sound.v
+    - deadang_seibu.v
+    - deadang_sei80bu.v
+    - deadang_adpcm.v
+    - deadang.sdc
+jtframe:
+  - from: ram
+    get:
+      - jtframe_ram.v
+      - jtframe_ram16.v
+      - jtframe_dual_ram.v
+      - jtframe_dual_ram16.v
+  - from: cpu
+    get:
+      - jtframe_z80.yaml
+jt12:
+  - get:
+    - jt12_rst.v
+    - jt03.yaml
+jt5205:
