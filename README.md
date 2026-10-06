@@ -8,7 +8,7 @@ Seibu arcade cores for **MiSTer**. · Cores arcade de **Seibu** para **MiSTer**.
 
 <table>
 <tr>
-<td align="center" width="33%"><a href="DETAILS.md"><img src="docs/screens/deadang.png" alt="Dead Angle"></a><br><b>Dead Angle</b> · 1988</td>
+<td align="center" width="33%"><a href="DETAILS.md#dead-angle-seibu-1988"><img src="docs/screens/deadang.png" alt="Dead Angle"></a><br><b>Dead Angle</b> · 1988</td>
 <td align="center" width="33%"><a href="DETAILS.md#empire-city-1931-seibu-1986"><img src="docs/screens/empcity.png" alt="Empire City: 1931"></a><br><b>Empire City: 1931</b> · 1986</td>
 </tr>
 </table>

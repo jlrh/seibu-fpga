@@ -25,6 +25,20 @@ the bitstream**. Or build from source (`cores/empirecity/`). See [`BUILD.md`](BU
 > (`jtempirecity_game`) keeps `jt`, because memgen imposes it. The **CORENAME is `empirecity`** (folder,
 > `.rbf` and `.mra` all use it).
 
+### Dead Angle (Seibu, 1988)
+Third-person gangster shooter, sequel to *Empire City: 1931*. Hardware: **2× NEC V30** at 8 MHz (main + sub,
+4 KB shared RAM with a hardware lock) + **Z80** sound CPU with the **SEI80BU**-encrypted program + Seibu
+Sound System (**YM3931** interface, **2×YM2203**, **2×MSM5205** ADPCM) + text layer + three 16×16
+playfields (one RAM-mapped, two ROM-mapped) + 256 sprites, 2048-colour palette.
+
+**Status: playable on MiSTer** — the `deadang` set boots, runs the attract, takes coins and plays (tested on
+real hardware: level 1, music and sound effects). Video was checked against MAME scene by scene (261
+scenes, 0 differing pixels in simulation). The V30s are **wickerwaka's cycle-exact NEC V30 "ucore"**
+(`nec_test`), with a max-mode bus controller derived from Raiden_MiSTer / M72.
+
+A prebuilt `.rbf` is in [`releases/`](releases/) (`ffdeadang_20261006.rbf`); the game ROMs are loaded at
+runtime from the `.mra` (`deadang.zip`, MAME 0.288 merged). Source: `cores/deadang/`.
+
 ## Build
 
 This repo contains **only the core code** (`cores/empirecity/`). The framework and third-party cores
@@ -54,7 +68,12 @@ loads the firmware and PROMs at runtime, so the `.rbf` carries no copyrighted da
 ## Credits
 
 - **JTFRAME**, **jt12/jt03**, **jt5205** — the GPLv3 frameworks this core is built on
-- **MAME** — hardware reference (`stfight.cpp` driver, 68705 research)
+- **MAME** — hardware reference (`stfight.cpp` driver, 68705 research; `deadang.cpp`, `seibusound.cpp`, `sei80bu.cpp`)
+- **wickerwaka** — cycle-exact NEC V30 ucore ([nec_test](https://github.com/wickerwaka/nec_test), commit
+  `ed50fb4e`), used by Dead Angle. Distributed with its own GPL-2.0 `LICENSE` text
+  (`cores/deadang/hdl/ucore_LICENSE_GPL2`); the files carry no "version 2 only" / "or later" statement
+- **Raiden_MiSTer** (Umberto Parisi) and **Irem M72** (Martin Donlon) — V30 max-mode bus controller that
+  `deadang_v30.sv` is distilled from
 
 ## Acknowledgements
 
@@ -98,6 +117,21 @@ el bitstream**. O compila desde fuente (`cores/empirecity/`). Ver [`BUILD.md`](B
 > GAMETOP (`jtempirecity_game`) conserva `jt`, porque memgen lo impone. El **CORENAME es `empirecity`**
 > (lo usan la carpeta, el `.rbf` y el `.mra`).
 
+### Dead Angle (Seibu, 1988)
+Shooter en tercera persona de gánsteres, secuela de *Empire City: 1931*. Hardware: **2× NEC V30** a 8 MHz
+(principal + secundaria, 4 KB de RAM compartida con candado hardware) + CPU de sonido **Z80** con programa
+cifrado (**SEI80BU**) + Seibu Sound System (interfaz **YM3931**, **2×YM2203**, **2×MSM5205** ADPCM) + capa de
+texto + tres playfields de 16×16 (uno con mapa en RAM, dos con mapa en ROM) + 256 sprites, paleta de 2048
+colores.
+
+**Estado: jugable en MiSTer** — el set `deadang` arranca, pasa el attract, acepta monedas y se juega
+(probado en placa real: nivel 1, música y efectos). El vídeo se contrastó con MAME escena a escena (261
+escenas, 0 píxeles distintos en simulación). Los V30 son el **"ucore" NEC V30 exacto a ciclo de wickerwaka**
+(`nec_test`), con un controlador de bus en modo máximo derivado de Raiden_MiSTer / M72.
+
+Hay un `.rbf` precompilado en [`releases/`](releases/) (`ffdeadang_20261006.rbf`); las ROMs del juego se
+cargan en runtime desde el `.mra` (`deadang.zip`, merged de MAME 0.288). Fuente: `cores/deadang/`.
+
 ## Construir
 
 Este repo contiene **solo el código del core** (`cores/empirecity/`). El framework y los cores de
@@ -127,7 +161,12 @@ las PROMs en runtime, así que el `.rbf` no lleva ningún dato con copyright.
 ## Créditos
 
 - **JTFRAME**, **jt12/jt03**, **jt5205** — los frameworks GPLv3 sobre los que se construye este core
-- **MAME** — referencia de hardware (driver `stfight.cpp`, investigación del 68705)
+- **MAME** — referencia de hardware (driver `stfight.cpp`, investigación del 68705; `deadang.cpp`, `seibusound.cpp`, `sei80bu.cpp`)
+- **wickerwaka** — ucore NEC V30 exacto a ciclo ([nec_test](https://github.com/wickerwaka/nec_test), commit
+  `ed50fb4e`), usado por Dead Angle. Se distribuye con su propio texto `LICENSE` GPL-2.0
+  (`cores/deadang/hdl/ucore_LICENSE_GPL2`); los ficheros no dicen "solo versión 2" ni "o posterior"
+- **Raiden_MiSTer** (Umberto Parisi) e **Irem M72** (Martin Donlon) — controlador de bus V30 en modo máximo
+  del que deriva `deadang_v30.sv`
 
 ## Agradecimientos
 
