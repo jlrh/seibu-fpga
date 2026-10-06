@@ -140,3 +140,16 @@ las PROMs en runtime, así que el `.rbf` no lleva ningún dato con copyright.
 
 **GPLv3** (ver [`LICENSE`](LICENSE)) — obligado por las dependencias JTFRAME / jt12 / jt5205; sus avisos de
 copyright se conservan en las fuentes.
+
+<!-- omf_release:dependencias:ffempirecity -->
+## Dependencias externas de `ffempirecity`
+
+Este repositorio contiene **solo el código de los cores**. Para compilar `ffempirecity`
+hacen falta estas piezas, que se distribuyen desde su propio origen:
+
+| Qué | De dónde | Dónde va |
+|---|---|---|
+| jtframe — framework de compilacion y modulos comunes (vtimer, SDRAM, descarga, CPUs Z80 y 6805) | [https://github.com/jotego/jtframe](https://github.com/jotego/jtframe) | `modules/jtframe` |
+| jt12 — YM2203 (jt03) | [https://github.com/jotego/jt12](https://github.com/jotego/jt12) | `modules/jt12` |
+| jt5205 — MSM5205 (ADPCM) | [https://github.com/jotego/jt5205](https://github.com/jotego/jt5205) | `modules/jt5205` |
+<!-- /omf_release:dependencias:ffempirecity -->
