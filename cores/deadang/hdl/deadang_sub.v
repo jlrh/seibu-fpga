@@ -41,7 +41,7 @@ wire [19:0] A;
 wire  [1:0] be;
 wire [15:0] cpu_dout;
 reg  [15:0] cpu_din;
-wire        mem_rd, mem_wr, int_ack;
+wire        mem_rd, mem_wr, mem_wr_cyc, int_ack;
 reg         int_req;
 reg   [7:0] int_vec;
 
@@ -64,7 +64,15 @@ always @(posedge clk) begin
     else if( age != 2'd3 ) age <= age + 2'd1;
 end
 wire rom_good = rom_ok && age >= 2'd2;
-wire ready = !(rom_cs && !rom_good) && !(sh_cs && sh_wait);
+
+wire sh_cyc = (mem_rd || mem_wr_cyc) && A[19:12] == 8'h04;
+reg  sh_gnt;
+always @(posedge clk) begin
+    if( rst || !sh_cyc ) sh_gnt <= 0;
+    else if( !sh_wait ) sh_gnt <= 1;
+end
+wire sh_blk = sh_cyc && sh_wait && !sh_gnt;
+wire ready  = !(rom_cs && !rom_good) && !sh_blk;
 
 wire [15:0] ram_dout, pf1_dout;
 
@@ -83,10 +91,21 @@ jtframe_dual_ram16 #(.AW(10)) u_pf1(
 
 assign sh_addr = A[11:1];
 assign sh_din  = cpu_dout;
-assign sh_we   = (sh_cs && !sh_wait) ? we : 2'b0;
+assign sh_we   = (sh_cs && !sh_blk) ? we : 2'b0;
 
 reg mem_wr_l;
 always @(posedge clk) mem_wr_l <= mem_wr;
+
+`ifdef SIMULATION
+
+reg sh_wr_done;
+always @(posedge clk) begin
+    if( !mem_wr ) sh_wr_done <= 0;
+    else if( sh_cs && !sh_blk ) sh_wr_done <= 1;
+    if( mem_wr_l && !mem_wr && A[19:12]==8'h04 && !sh_wr_done )
+        $display("SUBWR_LOST %05X be=%b data=%04X t=%0t", A, be, cpu_dout, $time);
+end
+`endif
 always @(posedge clk) begin
     if( rst ) begin
         tilebank <= 0;
@@ -130,6 +149,7 @@ deadang_v30 u_cpu(
     .din        ( cpu_din   ),
     .mem_rd     ( mem_rd    ),
     .mem_wr     ( mem_wr    ),
+    .mem_wr_cyc ( mem_wr_cyc),
     .code       (           ),
     .io_rd      (           ),
     .io_wr      (           ),

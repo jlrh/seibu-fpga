@@ -29,6 +29,7 @@ module deadang_v30(
     input      [15:0] din,
     output            mem_rd,
     output            mem_wr,
+    output            mem_wr_cyc,
     output            code,
     output            io_rd,
     output            io_wr,
@@ -154,6 +155,7 @@ assign code    = lat_type == BS_CODE;
 assign mem_rd  = addr_valid && (lat_type == BS_CODE || lat_type == BS_MEMR);
 assign io_rd   = addr_valid &&  lat_type == BS_IOR;
 assign mem_wr  = lat_type == BS_MEMW && (t_state == ST_T3 || t_state == ST_TW);
+assign mem_wr_cyc = addr_valid && lat_type == BS_MEMW;
 assign io_wr   = lat_type == BS_IOW  && (t_state == ST_T3 || t_state == ST_TW);
 assign int_ack = lat_type == BS_INTA && inta_second && t_state == ST_T3;
 

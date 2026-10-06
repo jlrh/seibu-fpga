@@ -17,13 +17,14 @@ module deadang_video(
     input             clk,
     input             pxl_cen,
 
-    input       [7:0] scr01, scr02, scr09, scr0a, scr11, scr12, scr19, scr1a,
-                      scr21, scr22, scr29, scr2a,
-    input       [7:0] ctl34,
-    input             tilebank,
+    input       [7:0] scr01_i, scr02_i, scr09_i, scr0a_i, scr11_i, scr12_i, scr19_i, scr1a_i,
+                      scr21_i, scr22_i, scr29_i, scr2a_i,
+    input       [7:0] ctl34_i,
+    input             tilebank_i,
+    input             spr_dma,
 
     output      [9:0] vtxt_addr,  input [15:0] vtxt_data,
-    output      [9:0] vspr_addr,  input [15:0] vspr_data,
+    output reg  [9:0] vspr_addr,  input [15:0] vspr_data,
     output     [10:0] vpal_addr,  input [15:0] vpal_data,
     output      [9:0] vpf1_addr,  input [15:0] vpf1_data,
 
@@ -82,6 +83,50 @@ always @(posedge clk) begin
     end
 end
 
+reg  [7:0] scr01, scr02, scr09, scr0a, scr11, scr12, scr19, scr1a,
+           scr21, scr22, scr29, scr2a, ctl34;
+reg        tilebank;
+wire       frame_latch = lstart && vcnt == 8'd240;
+
+always @(posedge clk) begin
+    if( rst ) begin
+        { scr01, scr02, scr09, scr0a, scr11, scr12, scr19, scr1a,
+          scr21, scr22, scr29, scr2a, ctl34 } <= 0;
+        tilebank <= 0;
+    end else if( frame_latch ) begin
+        { scr01, scr02, scr09, scr0a, scr11, scr12, scr19, scr1a, scr21, scr22, scr29, scr2a } <=
+        { scr01_i, scr02_i, scr09_i, scr0a_i, scr11_i, scr12_i, scr19_i, scr1a_i,
+          scr21_i, scr22_i, scr29_i, scr2a_i };
+        ctl34    <= ctl34_i;
+        tilebank <= tilebank_i;
+    end
+end
+
+reg        cp_on, cp_new, sdisp;
+reg [10:0] cp_d;
+wire [9:0] sbuf_addr;
+wire [15:0] sbuf_data;
+
+always @(posedge clk) begin
+    if( rst ) begin
+        cp_on <= 0; cp_new <= 0; sdisp <= 0; vspr_addr <= 0; cp_d <= 0;
+    end else begin
+        cp_d <= { cp_on, vspr_addr };
+        if( spr_dma ) begin
+            cp_on <= 1; cp_new <= 0; vspr_addr <= 0;
+        end else if( cp_on ) begin
+            vspr_addr <= vspr_addr + 10'd1;
+            if( vspr_addr == 10'h3FF ) begin cp_on <= 0; cp_new <= 1; end
+        end
+        if( frame_latch && cp_new && !cp_on ) begin sdisp <= ~sdisp; cp_new <= 0; end
+    end
+end
+
+jtframe_dual_ram16 #(.AW(11)) u_sprbuf(
+    .clk0 ( clk ), .data0( vspr_data ), .addr0( { ~sdisp, cp_d[9:0] } ), .we0( {2{cp_d[10]}} ), .q0(),
+    .clk1 ( clk ), .data1( 16'd0     ), .addr1( {  sdisp, sbuf_addr } ), .we1( 2'b0 ),         .q1( sbuf_data )
+);
+
 function [11:0] sc12( input [7:0] h, input [7:0] l );
     sc12 = { h[7:4], 8'd0 } + { 3'd0, l[6:0], 1'b0 } + { 11'd0, l[7] };
 endfunction
@@ -98,6 +143,7 @@ wire [7:0] pf3_ba, pf1_ba, pf2_ba, txt_ba, obj_ba;
 wire [7:0] pf3_bd, pf1_bd, pf2_bd, txt_bd;
 wire [9:0] obj_bd;
 wire       pf3_we, pf1_we, pf2_we, txt_we, obj_we;
+wire       pf3_busy, pf2_busy, pf1_busy, txt_busy, obj_busy;
 wire [14:0] pf1_map;
 
 deadang_tilemap #(.ROMMAP(1),.RW(16)) u_pf3(
@@ -105,21 +151,21 @@ deadang_tilemap #(.ROMMAP(1),.RW(16)) u_pf3(
     .scrx(sc12(scr09,scr0a)), .scry(sc12(scr01,scr02)), .bank(1'b0),
     .map_addr(map1_addr), .map_data(map1_data),
     .rom_addr(pf3rom_addr), .rom_cs(pf3rom_cs), .rom_data(pf3rom_data), .rom_ok(pf3rom_ok),
-    .buf_addr(pf3_ba), .buf_data(pf3_bd), .buf_we(pf3_we), .busy()
+    .buf_addr(pf3_ba), .buf_data(pf3_bd), .buf_we(pf3_we), .busy(pf3_busy)
 );
 deadang_tilemap #(.ROMMAP(1),.RW(16)) u_pf2(
     .rst(rst), .clk(clk), .start(lstart), .line(rline),
     .scrx(sc12(scr29,scr2a)), .scry(sc12(scr21,scr22)), .bank(1'b0),
     .map_addr(map2_addr), .map_data(map2_data),
     .rom_addr(pf2rom_addr), .rom_cs(pf2rom_cs), .rom_data(pf2rom_data), .rom_ok(pf2rom_ok),
-    .buf_addr(pf2_ba), .buf_data(pf2_bd), .buf_we(pf2_we), .busy()
+    .buf_addr(pf2_ba), .buf_data(pf2_bd), .buf_we(pf2_we), .busy(pf2_busy)
 );
 deadang_tilemap #(.ROMMAP(0),.RW(18)) u_pf1(
     .rst(rst), .clk(clk), .start(lstart), .line(rline),
     .scrx(sc9(scr19,scr1a)), .scry(sc9(scr11,scr12)), .bank(tilebank),
     .map_addr(pf1_map), .map_data(vpf1_data),
     .rom_addr(pf1rom_addr), .rom_cs(pf1rom_cs), .rom_data(pf1rom_data), .rom_ok(pf1rom_ok),
-    .buf_addr(pf1_ba), .buf_data(pf1_bd), .buf_we(pf1_we), .busy()
+    .buf_addr(pf1_ba), .buf_data(pf1_bd), .buf_we(pf1_we), .busy(pf1_busy)
 );
 assign vpf1_addr = pf1_map[9:0];
 
@@ -127,14 +173,14 @@ deadang_text u_txt(
     .rst(rst), .clk(clk), .start(lstart), .line(rline),
     .vram_addr(vtxt_addr), .vram_data(vtxt_data),
     .rom_addr(char_addr), .rom_data(char_data),
-    .buf_addr(txt_ba), .buf_data(txt_bd), .buf_we(txt_we), .busy()
+    .buf_addr(txt_ba), .buf_data(txt_bd), .buf_we(txt_we), .busy(txt_busy)
 );
 
 deadang_obj u_obj(
     .rst(rst), .clk(clk), .start(lstart), .line(rline),
-    .ram_addr(vspr_addr), .ram_data(vspr_data),
+    .ram_addr(sbuf_addr), .ram_data(sbuf_data),
     .rom_addr(objrom_addr), .rom_cs(objrom_cs), .rom_data(objrom_data), .rom_ok(objrom_ok),
-    .buf_addr(obj_ba), .buf_data(obj_bd), .buf_we(obj_we), .busy()
+    .buf_addr(obj_ba), .buf_data(obj_bd), .buf_we(obj_we), .busy(obj_busy)
 );
 
 reg  [7:0] rd_x;
@@ -198,5 +244,36 @@ always @(posedge clk) begin
         if( ph == 4'd2 && vis ) obj_clr <= 1;
     end
 end
+
+`ifdef SIMULATION
+
+reg [95:0] scr_l = 0;
+wire [95:0] scr_now = {scr01_i,scr02_i,scr09_i,scr0a_i,scr11_i,scr12_i,scr19_i,scr1a_i,
+                      scr21_i,scr22_i,scr29_i,scr2a_i};
+always @(posedge clk) begin
+    scr_l <= scr_now;
+    if( scr_now != scr_l ) $display("SCRWR v=%0d h=%0d %024X", vcnt, hcnt, scr_now);
+end
+
+integer lclk=0, m3=0,m2=0,m1=0,mt=0,mo=0, ovf=0, ovo=0;
+always @(posedge clk) begin
+    if( lstart ) begin
+        if( pf3_busy || pf2_busy || pf1_busy || txt_busy ) ovf = ovf + 1;
+        if( obj_busy ) ovo = ovo + 1;
+        lclk = 0;
+        if( vcnt == 8'd255 ) begin
+            $display("LINEBUD pf3=%0d pf2=%0d pf1=%0d txt=%0d obj=%0d ovf_pf=%0d ovf_obj=%0d", m3,m2,m1,mt,mo,ovf,ovo);
+            m3=0; m2=0; m1=0; mt=0; mo=0; ovf=0; ovo=0;
+        end
+    end else begin
+        lclk = lclk + 1;
+        if( pf3_busy && lclk > m3 ) m3 = lclk;
+        if( pf2_busy && lclk > m2 ) m2 = lclk;
+        if( pf1_busy && lclk > m1 ) m1 = lclk;
+        if( txt_busy && lclk > mt ) mt = lclk;
+        if( obj_busy && lclk > mo ) mo = lclk;
+    end
+end
+`endif
 
 endmodule
